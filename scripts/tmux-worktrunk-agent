@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+usage() {
+  printf 'usage: txa [-s|--switch] [--dry-run] <branch> <prompt>\n' >&2
+}
+
+switch=false
+dry_run=false
+while [[ $# -gt 0 ]]; do
+  case ${1:-} in
+    -s|--switch)
+      switch=true
+      shift
+      ;;
+    --dry-run)
+      dry_run=true
+      shift
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
+if [[ $# -lt 2 ]]; then
+  usage
+  exit 2
+fi
+
+branch=$1
+shift
+prompt=$*
+
+repo_root=$(git rev-parse --show-toplevel)
+repo=$(basename "$repo_root")
+safe_branch=$(printf '%s' "$branch" | tr -c '[:alnum:]_-' '-')
+session="${repo}_${safe_branch}"
+
+if tmux has-session -t="$session:" 2>/dev/null; then
+  if [[ $switch == true ]]; then
+    if [[ -n ${TMUX:-} ]]; then
+      exec tmux switch-client -t "$session:"
+    fi
+
+    exec tmux attach -t "$session:"
+  fi
+
+  printf '%s\n' "$session"
+  exit 0
+fi
+
+quoted_branch=$(printf '%q' "$branch")
+quoted_prompt=$(printf '%q' "$prompt")
+
+command="if git show-ref --verify --quiet refs/heads/$quoted_branch; then wt switch $quoted_branch -x opencode -- --prompt $quoted_prompt; else wt switch -c $quoted_branch --base '^' -x opencode -- --prompt $quoted_prompt; fi"
+
+if [[ $dry_run == true ]]; then
+  printf 'repo: %s\n' "$repo"
+  printf 'session: %s\n' "$session"
+  printf 'cwd: %s\n' "$repo_root"
+  printf 'command: %s\n' "$command"
+  exit 0
+fi
+
+tmux new-session -d -s "$session" -c "$repo_root"
+tmux send-keys -t "$session:" "$command" C-m
+
+if [[ $switch == true ]]; then
+  if [[ -n ${TMUX:-} ]]; then
+    exec tmux switch-client -t "$session:"
+  fi
+
+  exec tmux attach -t "$session:"
+fi
+
+printf '%s\n' "$session"

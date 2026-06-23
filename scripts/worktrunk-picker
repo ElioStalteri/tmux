@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+list_worktrees() {
+  wt list --format=json | jq -r '
+    .[]
+    | select(.branch != null)
+    | [
+        .branch,
+        (.path // ""),
+        .kind,
+        (.symbols // ""),
+        (.commit.short_sha // ""),
+        (.commit.message // "")
+      ]
+    | @tsv
+  '
+}
+
+preview_worktree() {
+  local branch=$1
+  local path=${2:-}
+
+  printf 'branch: %s\n' "$branch"
+  if [[ -n $path ]]; then
+    printf 'path: %s\n\n' "$path"
+    git -C "$path" status --short
+    printf '\n'
+    git -C "$path" log --oneline -10
+    printf '\n'
+    git -C "$path" diff --stat
+    return
+  fi
+
+  printf '\nNo worktree path for this branch.\n'
+}
+
+remove_worktree() {
+  local branch=$1
+  wt remove "$branch"
+}
+
+case ${1:-} in
+  --list)
+    list_worktrees
+    exit 0
+    ;;
+  --preview)
+    preview_worktree "$2" "${3:-}"
+    exit 0
+    ;;
+  --remove)
+    remove_worktree "$2"
+    exit 0
+    ;;
+esac
+
+script_path=$(realpath "$0")
+
+selected=$(
+  list_worktrees | fzf \
+    --height=100% \
+    --layout=reverse \
+    --border=rounded \
+    --delimiter=$'\t' \
+    --with-nth=1,4,5,6 \
+    --prompt='worktrees > ' \
+    --header='Enter: wt switch | Ctrl-d: wt remove | Ctrl-/: preview | Esc: close' \
+    --preview="'$script_path' --preview {1} {2}" \
+    --preview-window='right:60%:wrap' \
+    --bind="ctrl-d:execute-silent('$script_path' --remove {1})+reload('$script_path' --list)+clear-query" \
+    --bind='ctrl-/:toggle-preview' \
+    --bind='ctrl-u:preview-half-page-up,ctrl-f:preview-half-page-down'
+) || exit 0
+
+if [[ -z ${selected:-} ]]; then
+  exit 0
+fi
+
+cut -f1 <<<"$selected"

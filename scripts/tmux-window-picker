@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+list_windows() {
+  tmux list-windows -F '#{window_index}	#{window_name}	#{?window_active,active,}	#{pane_current_command}	#{pane_current_path}'
+}
+
+kill_window() {
+  local session=$1
+  local window=$2
+  local count
+
+  count=$(tmux list-windows -t "$session" | wc -l | tr -d ' ')
+  if [[ $count -le 1 ]]; then
+    tmux display-message 'Cannot kill the last window in the session'
+    exit 0
+  fi
+
+  tmux kill-window -t "$session:$window"
+}
+
+preview_window() {
+  local session=$1
+  local window=$2
+
+  tmux display-message -p -t "$session:$window" '#[bold]#S:#I #W#[default]  #{pane_current_command}  #{pane_current_path}'
+  printf '\n'
+  tmux capture-pane -epJ -t "$session:$window" -S -200
+}
+
+if [[ ${1:-} == '--kill' ]]; then
+  kill_window "$2" "$3"
+  exit 0
+fi
+
+if [[ ${1:-} == '--preview' ]]; then
+  preview_window "$2" "$3"
+  exit 0
+fi
+
+if [[ ${1:-} == '--list' ]]; then
+  list_windows
+  exit 0
+fi
+
+script_path=$(realpath "$0")
+session=$(tmux display-message -p '#S')
+selected=$(
+  list_windows | fzf \
+    --height=100% \
+    --layout=reverse \
+    --border=rounded \
+    --delimiter=$'\t' \
+    --with-nth=1,2,3,4 \
+    --prompt='windows > ' \
+    --header='Enter: switch | Ctrl-d: kill window | Ctrl-/: preview | Esc: close' \
+    --preview="'$script_path' --preview '$session' {1}" \
+    --preview-window='right:60%:wrap' \
+    --bind="ctrl-d:execute-silent('$script_path' --kill '$session' {1})+reload('$script_path' --list)+clear-query" \
+    --bind='ctrl-/:toggle-preview' \
+    --bind='ctrl-u:preview-half-page-up,ctrl-f:preview-half-page-down' \
+    --bind='change:top' \
+    --ansi
+)
+
+if [[ -z ${selected:-} ]]; then
+  exit 0
+fi
+
+window=$(cut -f1 <<<"$selected")
+tmux select-window -t "$session:$window"

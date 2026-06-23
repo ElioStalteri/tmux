@@ -1,0 +1,129 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+mode=${1:-tmux}
+
+list_by_mode() {
+  case "$1" in
+    tmux)
+      sesh list --tmux --hide-attached
+      ;;
+    zoxide)
+      sesh list --zoxide --config --hide-duplicates
+      ;;
+    all)
+      sesh list --tmux --zoxide --config --hide-duplicates
+      ;;
+  esac
+}
+
+prompt_by_mode() {
+  case "$1" in
+    tmux)
+      printf '%s\n' 'tmux sessions > '
+      ;;
+    zoxide)
+      printf '%s\n' 'zoxide/config > '
+      ;;
+    all)
+      printf '%s\n' 'all sessions > '
+      ;;
+  esac
+}
+
+toggle_state() {
+  local state_file=$1
+  local current
+
+  current=$(cat "$state_file" 2>/dev/null || printf '%s' tmux)
+  if [[ $current == tmux ]]; then
+    printf '%s\n' zoxide >"$state_file"
+  else
+    printf '%s\n' tmux >"$state_file"
+  fi
+}
+
+mode_from_state() {
+  cat "$1" 2>/dev/null || printf '%s\n' tmux
+}
+
+if [[ ${1:-} == '--toggle-state' ]]; then
+  toggle_state "$2"
+  exit 0
+fi
+
+if [[ ${1:-} == '--list-state' ]]; then
+  list_by_mode "$(mode_from_state "$2")"
+  exit 0
+fi
+
+if [[ ${1:-} == '--prompt-state' ]]; then
+  prompt_by_mode "$(mode_from_state "$2")"
+  exit 0
+fi
+
+list_sessions() {
+  list_by_mode "$mode"
+}
+
+kill_session() {
+  local target=$1
+
+  if ! tmux has-session -t="$target" 2>/dev/null; then
+    tmux display-message "No active tmux session: $target" 2>/dev/null || true
+    exit 0
+  fi
+
+  tmux kill-session -t "$target"
+}
+
+if [[ ${1:-} == '--kill' ]]; then
+  kill_session "$2"
+  exit 0
+fi
+
+case "$mode" in
+  tmux|zoxide|all)
+    prompt=$(prompt_by_mode "$mode")
+    ;;
+  *)
+    printf 'usage: %s [tmux|zoxide|all]\n' "$0" >&2
+    exit 2
+    ;;
+esac
+
+if [[ ${2:-} == '--list' ]]; then
+  list_sessions
+  exit 0
+fi
+
+script_path=$(realpath "$0")
+state_file=$(mktemp -t tmux-session-picker.XXXXXX)
+trap 'rm -f "$state_file"' EXIT
+printf '%s\n' "$mode" >"$state_file"
+
+selected=$(
+  list_sessions | fzf \
+    --height=100% \
+    --layout=reverse \
+    --border=rounded \
+    --prompt="$prompt" \
+    --header='Enter: connect | Ctrl-t: toggle tmux/zoxide | Ctrl-d: kill tmux session | Ctrl-/: preview | Esc: close' \
+    --preview='sesh preview {}' \
+    --preview-window='right:55%:wrap' \
+    --bind="ctrl-t:execute-silent('$script_path' --toggle-state '$state_file')+reload('$script_path' --list-state '$state_file')+transform-prompt('$script_path' --prompt-state '$state_file')+clear-query" \
+    --bind="ctrl-d:execute-silent('$script_path' --kill {})+reload('$script_path' --list-state '$state_file')+clear-query" \
+    --bind='ctrl-/:toggle-preview' \
+    --bind='ctrl-u:preview-half-page-up,ctrl-f:preview-half-page-down'
+) || exit 0
+
+if [[ -z ${selected:-} ]]; then
+  exit 0
+fi
+
+if [[ -n ${TMUX:-} ]]; then
+  exec sesh connect --switch "$selected"
+fi
+
+exec sesh connect "$selected"
