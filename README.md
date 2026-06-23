@@ -34,7 +34,7 @@ git submodule update --init --recursive
 Core dependencies with Homebrew:
 
 ```sh
-brew install tmux git bash fzf sesh zoxide bat worktrunk opencode jq
+brew install tmux git bash fzf sesh zoxide bat worktrunk jq
 ```
 
 Linux clipboard backend if needed:
@@ -46,7 +46,7 @@ brew install wl-clipboard
 Required commands:
 
 ```text
-tmux git bash fzf sesh zoxide bat wt opencode jq
+tmux git bash fzf sesh zoxide bat wt jq
 ```
 
 Clipboard requires at least one of:

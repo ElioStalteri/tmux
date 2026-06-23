@@ -2,7 +2,7 @@
 
 tmux_config_check_deps() {
   local missing=0
-  local required=(tmux git bash fzf sesh zoxide bat wt opencode jq)
+  local required=(tmux git bash fzf sesh zoxide bat wt jq)
   local cmd
 
   for cmd in "${required[@]}"; do
@@ -29,7 +29,7 @@ tmux_config_check_deps() {
 
   if [[ $missing -eq 1 ]]; then
     printf 'tmux-config: install core dependencies with Homebrew:\n' >&2
-    printf '  brew install tmux git bash fzf sesh zoxide bat worktrunk opencode jq\n' >&2
+    printf '  brew install tmux git bash fzf sesh zoxide bat worktrunk jq\n' >&2
     printf 'tmux-config: install one clipboard backend if needed, for example:\n' >&2
     printf '  brew install wl-clipboard\n' >&2
   fi
