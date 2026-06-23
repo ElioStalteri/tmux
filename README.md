@@ -66,6 +66,7 @@ prefix q     detach client
 prefix Q     kill session with confirmation
 prefix C-l   switch to last sesh session
 
+prefix a     custom action picker
 prefix w     window picker with preview
 prefix h     previous window
 prefix l     next window
@@ -97,6 +98,18 @@ Ctrl-d    kill selected window
 Ctrl-/    toggle preview
 Ctrl-u    preview scroll up
 Ctrl-f    preview scroll down
+```
+
+Custom actions live in `~/.config/tmux/actions.local.tsv`. The file is gitignored and is created with default actions the first time the picker runs. Add one action per line using TSV format:
+
+```text
+Label<TAB>tmux-command
+```
+
+Commands can be normal tmux commands without the `tmux` prefix:
+
+```text
+Dev + Lazygit	new-window -n dev \; send-keys 'just dev' C-m \; split-window -h \; send-keys 'lazygit' C-m
 ```
 
 Shell helpers:

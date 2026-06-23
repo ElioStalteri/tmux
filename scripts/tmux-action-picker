@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+actions_file=${TMUX_ACTIONS_FILE:-$HOME/.config/tmux/actions.local.tsv}
+
+create_default_actions_file() {
+  if [[ -f $actions_file ]]; then
+    return 0
+  fi
+
+  mkdir -p "$(dirname "$actions_file")"
+  cat >"$actions_file" <<'EOF'
+# label<TAB>tmux-command
+# Blank lines and lines starting with # are ignored.
+
+Lazygit	new-window -n lazygit \; send-keys 'lazygit' C-m
+Neovim	new-window -n nvim \; send-keys 'nvim' C-m
+EOF
+}
+
+list_actions() {
+  if [[ ! -f $actions_file ]]; then
+    return 0
+  fi
+
+  awk -F '\t' '
+    NF >= 2 && $1 !~ /^[[:space:]]*#/ && $1 !~ /^[[:space:]]*$/ {
+      print
+    }
+  ' "$actions_file"
+}
+
+preview_action() {
+  local command=$1
+
+  printf 'tmux command:\n\n%s\n' "$command"
+}
+
+run_action() {
+  local command=$1
+
+  if [[ $command == tmux\ * ]]; then
+    eval "$command"
+  else
+    eval "tmux $command"
+  fi
+}
+
+if [[ ${1:-} == '--list' ]]; then
+  create_default_actions_file
+  list_actions
+  exit 0
+fi
+
+if [[ ${1:-} == '--preview' ]]; then
+  preview_action "${2:-}"
+  exit 0
+fi
+
+create_default_actions_file
+
+script_path=$(realpath "$0")
+selected=$(
+  list_actions | fzf \
+    --height=100% \
+    --layout=reverse \
+    --border=rounded \
+    --delimiter=$'\t' \
+    --with-nth=1 \
+    --prompt='actions > ' \
+    --header='Enter: run action | Ctrl-/: preview | Esc: close' \
+    --preview="'$script_path' --preview {2..}" \
+    --preview-window='right:60%:wrap' \
+    --bind='ctrl-/:toggle-preview' \
+    --bind='ctrl-u:preview-half-page-up,ctrl-f:preview-half-page-down' \
+    --bind='change:top' \
+    --ansi
+) || exit 0
+
+if [[ -z ${selected:-} ]]; then
+  exit 0
+fi
+
+command=$(cut -f2- <<<"$selected")
+run_action "$command"
