@@ -37,4 +37,18 @@ tmux_config_check_deps() {
   return "$missing"
 }
 
+tx() {
+  ~/.config/tmux/scripts/tmux-session-picker tmux
+}
+
+txa() {
+  ~/.config/tmux/scripts/tmux-worktrunk-agent "$@"
+}
+
+wtl() {
+  local branch
+  branch=$(~/.config/tmux/scripts/worktrunk-picker) || return
+  [[ -n "$branch" ]] && wt switch "$branch"
+}
+
 tmux_config_check_deps || true

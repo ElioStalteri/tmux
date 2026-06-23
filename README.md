@@ -1,138 +1,84 @@
 # Tmux Workspace
 
-A portable tmux setup for project/session navigation with `sesh`, `fzf`, `zoxide`, Worktrunk, OpenCode, mouse support, copy-mode, and a custom Catppuccin status bar.
+Portable tmux setup with `sesh`, `fzf`, `zoxide`, Worktrunk, OpenCode, mouse support, copy-mode, and a custom Catppuccin status bar.
 
-This repository is designed to be cloned directly into:
-
-```sh
-~/.config/tmux
-```
-
-## Dependencies
-
-Required commands:
-
-```text
-tmux
-git
-bash
-fzf
-sesh
-zoxide
-bat
-wt
-opencode
-jq
-```
-
-Clipboard requires at least one of:
-
-```text
-pbcopy
-wl-copy
-xclip
-xsel
-clip.exe
-termux-clipboard-set
-```
-
-On macOS or Linux with Homebrew, install the core dependencies with:
+## Setup
 
 ```sh
-brew install tmux git bash fzf sesh zoxide bat worktrunk opencode jq
-```
-
-On Linux, install one clipboard backend if your distribution does not already provide one:
-
-```sh
-brew install wl-clipboard
-```
-
-## Install
-
-Clone with submodules so TPM is available:
-
-```sh
-git clone --recurse-submodules <repo-url> ~/.config/tmux
-```
-
-If you already cloned without submodules:
-
-```sh
-cd ~/.config/tmux
-git submodule update --init --recursive
-```
-
-Make scripts executable:
-
-```sh
+git clone --recurse-submodules git@github.com:ElioStalteri/tmux.git ~/.config/tmux
 chmod +x ~/.config/tmux/scripts/*
+printf '\nsource ~/.config/tmux/scripts/entrypoint.sh\n' >> ~/.bashrc
 ```
 
-Add this to your `~/.bashrc` or `~/.zshrc`:
+For zsh, use:
 
 ```sh
-source ~/.config/tmux/scripts/check-deps.sh
-source ~/.config/tmux/scripts/shell-functions.sh
+printf '\nsource ~/.config/tmux/scripts/entrypoint.sh\n' >> ~/.zshrc
 ```
 
 Start tmux and install plugins with TPM:
 
 ```text
-prefix + I
+Ctrl-b I
 ```
 
-By default the tmux prefix is the standard `Ctrl-b`.
-
-## TPM Submodule
-
-TPM is included as a Git submodule at:
-
-```text
-plugins/tpm
-```
-
-For a fresh clone, prefer:
-
-```sh
-git clone --recurse-submodules <repo-url> ~/.config/tmux
-```
-
-If you already cloned without submodules:
+If you cloned without submodules:
 
 ```sh
 cd ~/.config/tmux
 git submodule update --init --recursive
 ```
 
-To update TPM later:
+## Deps
+
+Core dependencies with Homebrew:
 
 ```sh
-cd ~/.config/tmux
-git submodule update --remote plugins/tpm
-git add plugins/tpm
-git commit -m "update tpm"
+brew install tmux git bash fzf sesh zoxide bat worktrunk opencode jq
 ```
 
-If tmux says TPM is missing, check that this file exists and is executable:
+Linux clipboard backend if needed:
 
 ```sh
-~/.config/tmux/plugins/tpm/tpm
+brew install wl-clipboard
 ```
 
-## Tmux Keymaps
-
-Sessions:
+Required commands:
 
 ```text
-prefix s     open session picker
-prefix S     open session picker
+tmux git bash fzf sesh zoxide bat wt opencode jq
+```
+
+Clipboard requires at least one of:
+
+```text
+pbcopy wl-copy xclip xsel clip.exe termux-clipboard-set
+```
+
+## Usage
+
+Tmux keymaps:
+
+```text
+prefix s     session picker
+prefix S     session picker
 prefix q     detach client
 prefix Q     kill session with confirmation
 prefix C-l   switch to last sesh session
+
+prefix w     window picker with preview
+prefix h     previous window
+prefix l     next window
+prefix n     new window
+prefix x     kill current window
+
+prefix H/J/K/L   select pane left/down/up/right
+
+prefix v     copy-mode
+prefix /     search in copy-mode
 ```
 
-Inside the session picker:
+Session picker keys:
 
 ```text
 Enter     connect/switch
@@ -143,17 +89,7 @@ Ctrl-u    preview scroll up
 Ctrl-f    preview scroll down
 ```
 
-Windows:
-
-```text
-prefix w     open window picker with preview
-prefix h     previous window
-prefix l     next window
-prefix n     new window
-prefix x     kill current window
-```
-
-Inside the window picker:
+Window picker keys:
 
 ```text
 Enter     switch window
@@ -163,56 +99,39 @@ Ctrl-u    preview scroll up
 Ctrl-f    preview scroll down
 ```
 
-Panes:
-
-```text
-prefix H/J/K/L   select pane left/down/up/right
-```
-
-Copy/search:
-
-```text
-prefix v     copy-mode
-prefix /     search in copy-mode
-v            begin selection in copy-mode
-y            copy selection
-```
-
-Mouse mode is enabled.
-
-## Shell Functions
-
-`tx` opens the session picker outside tmux:
+Shell helpers:
 
 ```sh
 tx
 ```
 
-`txa` creates a Worktrunk branch/worktree from the default branch, starts a detached tmux session named `repo_branch`, and launches OpenCode with a prompt:
+Open the session picker outside tmux.
 
 ```sh
 txa feature-branch "Implement the task"
 ```
 
-Switch to the new session immediately:
+Create a Worktrunk branch/worktree from the default branch, start a detached tmux session named `repo_branch`, and launch OpenCode with a prompt.
 
 ```sh
 txa -s feature-branch "Implement the task"
 ```
 
-Preview what would run:
+Create and switch to the new session immediately.
 
 ```sh
 txa --dry-run feature-branch "Implement the task"
 ```
 
-`wtl` opens a Worktrunk picker powered by `wt list --format=json`:
+Preview what would run.
 
 ```sh
 wtl
 ```
 
-Inside `wtl`:
+Open a Worktrunk picker powered by `wt list --format=json`.
+
+`wtl` keys:
 
 ```text
 Enter     wt switch selected branch
@@ -220,12 +139,10 @@ Ctrl-d    wt remove selected branch
 Ctrl-/    toggle preview
 ```
 
-## Notes
-
-The status bar shows:
+Status bar:
 
 ```text
 session | windows | git branch | time
 ```
 
-The right-side git branch pill is hidden automatically outside Git repositories.
+The git branch pill is hidden outside Git repositories.
